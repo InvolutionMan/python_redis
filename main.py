@@ -65,6 +65,11 @@ async def set_value(key: str, direction:str,value: str, r=Depends(get_redis)):
         return {"msg": "插入成功"}
     return {"error": "direction must be left or right"}
 
+@app.get("/set_set")
+async def set_value(key: str, value: str, r=Depends(get_redis)):
+    await r.sadd(key, value)
+    return {"msg": "插入成功"}
+
 # 读取 Redis
 @app.get("/get")
 async def get_value(key: str, field: str = None, r=Depends(get_redis)):
@@ -89,4 +94,10 @@ async def get_value(key: str, field: str = None, r=Depends(get_redis)):
         value = await r.lrange(key, 0, -1)
         return {"type": "list", "value": value}
 
+        # set
+        if key_type == "set":
+            value = await r.smembers(key)
+            return {"type": "set", "value": list(value)}
+
     return {"error": "Key not found or unsupported type"}
+
