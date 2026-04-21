@@ -1,11 +1,57 @@
-# Test your FastAPI endpoints
+# Redis 登录缓存练习
+# 说明：
+# 1. /send_code 会把验证码存进 Redis，key 类似 login:code:15172212365
+# 2. /login 会校验 Redis 中的验证码，然后生成 token，并把用户信息存进 Redis
+# 3. /me 会根据 Authorization 里的 Bearer token 去 Redis 读取当前用户
 
-GET http://127.0.0.1:8000/
-Accept: application/json
+@baseUrl = http://127.0.0.1:8000
+@phone = 15172212365
+@code = 1234
+@token = 请先把登录返回的token贴到这里
 
 ###
+# 1) 发送验证码，验证码会写入 Redis
+POST {{baseUrl}}/send_code
+Content-Type: application/json
 
-GET http://127.0.0.1:8000/hello/User
-Accept: application/json
+{
+  "phone": "{{phone}}"
+}
 
 ###
+# 2) 登录
+# 把上一步返回的 code 填到 @code 或下面请求体里
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+  "phone": "{{phone}}",
+  "code": "{{code}}"
+}
+
+###
+# 3) 获取当前用户
+# 这里会带着 token 去后端，后端再去 Redis 查 login:token:<token>
+GET {{baseUrl}}/me
+Authorization: Bearer {{token}}
+
+###
+# 4) 保存 localStorage 内容到 MySQL 的 test.user.ny
+POST {{baseUrl}}/save_local
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "ny": "这是一条来自 localStorage 的学习记录"
+}
+
+###
+# 4) 观察验证码过期后的行为
+# 等验证码对应的 Redis key 过期后，再登录会返回“验证码已过期”
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+  "phone": "{{phone}}",
+  "code": "{{code}}"
+}

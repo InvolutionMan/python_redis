@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>短信登录与缓存学习</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="panel auth-view" id="authView">
+        <div class="panel__hero">
+          <p class="eyebrow">SMS SIGN IN</p>
+          <h1>手机号验证码登录</h1>
+          <p class="subtitle">
+            登录后会跳转到一个缓存学习界面，你可以直接看到
+            <code>memory</code>、<code>sessionStorage</code> 和
+            <code>localStorage</code> 的区别，同时理解前端缓存和 Redis 服务端缓存如何配合。
+          </p>
+        </div>
+
+        <form class="login-form" id="loginForm">
+          <label class="field">
+            <span>手机号</span>
+            <input
+              value="15172212365"
+              id="phone"
+              name="phone"
+              type="tel"
+              inputmode="numeric"
+              maxlength="11"
+              placeholder="请输入中国大陆手机号"
+              autocomplete="tel"
+            />
+          </label>
+
+          <label class="field">
+            <span>验证码</span>
+            <div class="code-row">
+              <input
+                id="code"
+                name="code"
+                type="text"
+                inputmode="numeric"
+                maxlength="4"
+                placeholder="请输入 4 位验证码"
+                autocomplete="one-time-code"
+              />
+              <button class="ghost-button" id="sendCodeBtn" type="button">
+                获取验证码
+              </button>
+            </div>
+          </label>
+
+          <button class="primary-button" id="submitBtn" type="submit">
+            登录 / 注册
+          </button>
+
+          <p class="tips">
+            当前前端只把 <code>token</code> 放进 <code>localStorage</code>，真正的验证码和登录会话由后端 Redis 缓存。
+          </p>
+
+          <p class="message" id="message" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section class="panel dashboard-view hidden" id="dashboardView">
+        <div class="dashboard-header">
+          <div>
+            <p class="eyebrow">CACHE LAB</p>
+            <h1>前端缓存学习页</h1>
+            <p class="subtitle" id="welcomeText">
+              这里会演示不同缓存位置的生命周期，以及它们和 Redis 登录缓存的配合方式。
+            </p>
+          </div>
+          <button class="ghost-button logout-chip" id="logoutBtn" type="button">
+            退出登录
+          </button>
+        </div>
+
+        <section class="overview-grid">
+          <article class="mini-card">
+            <p class="mini-card__label">内存缓存</p>
+            <h2>Memory</h2>
+            <p id="memoryStatus">页面运行期间可用，刷新后消失。</p>
+          </article>
+          <article class="mini-card">
+            <p class="mini-card__label">会话缓存</p>
+            <h2>Session Storage</h2>
+            <p id="sessionStatus">当前标签页有效，关闭标签页后消失。</p>
+          </article>
+          <article class="mini-card">
+            <p class="mini-card__label">持久缓存</p>
+            <h2>Local Storage</h2>
+            <p id="localStatus">刷新页面后仍然存在，适合保存登录态。</p>
+          </article>
+        </section>
+
+        <section class="learning-grid">
+          <article class="content-card">
+            <div class="card-head">
+              <div>
+                <p class="card-kicker">接口缓存示例</p>
+                <h3>用户信息缓存</h3>
+              </div>
+              <button class="ghost-button small-button" id="refreshProfileBtn" type="button">
+                从接口刷新
+              </button>
+            </div>
+            <p class="card-text">
+              浏览器里只保留 token。真正的登录态在 Redis 中，页面重新进入时会带着 token 请求
+              <code>/me</code>，由后端从 Redis 里取出用户信息。
+            </p>
+            <pre class="data-panel" id="profileOutput">暂无用户信息</pre>
+          </article>
+
+          <article class="content-card">
+            <div class="card-head">
+              <div>
+                <p class="card-kicker">生命周期对比</p>
+                <h3>缓存实验台</h3>
+              </div>
+              <button class="ghost-button small-button" id="clearCacheBtn" type="button">
+                清空学习缓存
+              </button>
+            </div>
+
+            <label class="field">
+              <span>输入一段学习笔记</span>
+              <textarea
+                class="note-input"
+                id="cacheNoteInput"
+                rows="4"
+                placeholder="例如：localStorage 适合缓存 token，sessionStorage 适合临时草稿。"
+              ></textarea>
+            </label>
+
+            <label class="field">
+              <span>查询历史记录</span>
+              <input
+                id="historySearchInput"
+                type="text"
+                placeholder="输入关键词，筛选 sessionStorage / localStorage 历史"
+              />
+            </label>
+
+            <div class="action-row">
+              <button class="primary-button secondary-width" id="saveSessionBtn" type="button">
+                存到 sessionStorage
+              </button>
+              <button class="primary-button secondary-width" id="saveLocalBtn" type="button">
+                存到 localStorage
+              </button>
+              <button class="ghost-button secondary-width" id="saveMysqlBtn" type="button">
+                保存 localStorage 到 MySQL
+              </button>
+            </div>
+
+            <div class="cache-columns">
+              <div class="cache-box">
+                <p class="cache-box__title">Memory</p>
+                <pre class="data-panel compact" id="memoryOutput">暂无内容</pre>
+              </div>
+              <div class="cache-box">
+                <p class="cache-box__title">Session</p>
+                <pre class="data-panel compact" id="sessionOutput">暂无内容</pre>
+              </div>
+              <div class="cache-box">
+                <p class="cache-box__title">Local</p>
+                <pre class="data-panel compact" id="localOutput">暂无内容</pre>
+              </div>
+            </div>
+
+            <div class="history-grid">
+              <div class="cache-box">
+                <p class="cache-box__title">Session History</p>
+                <div class="history-list" id="sessionHistoryOutput">暂无历史</div>
+              </div>
+              <div class="cache-box">
+                <p class="cache-box__title">Local History</p>
+                <div class="history-list" id="localHistoryOutput">暂无历史</div>
+              </div>
+            </div>
+          </article>
+        </section>
+      </section>
+    </main>
+
+    <script src="./main.js"></script>
+  </body>
+</html>
