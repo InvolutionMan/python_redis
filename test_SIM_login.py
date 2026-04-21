@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from typing import Optional
+from datetime import datetime
 import random
-import re
 import uuid
 import json
 from fastapi import Depends
@@ -69,6 +69,12 @@ async def send_code(request: SendCodeRequest):
 class LoginRequest(BaseModel):
     phone: str
     code: str
+
+
+class LocalStoragePayload(BaseModel):
+    ny: str
+
+
 @app.post("/login")
 
 async def login(request:LoginRequest):
@@ -103,3 +109,30 @@ async def get_me(current_user: dict = Depends(get_current_user)):#从请求头�
         "message": "获取用户成功",
         "user": current_user
     }
+
+
+@app.post("/save_local")
+async def save_local(
+    data: LocalStoragePayload,
+    current_user: dict = Depends(get_current_user),
+):
+    try:
+        phone = current_user.get("phone")
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        note_key = f"note:local:{phone}"
+        note_payload = {
+            "ny": data.ny,
+            "time": now,
+            "operator": phone,
+        }
+
+        await redis_client.hset(note_key, mapping=note_payload)
+        await redis_client.expire(note_key, 1800)
+
+        return {
+            "msg": "写入 Redis 成功",
+            "data": note_payload,
+            "operator": phone,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"写入失败: {str(e)}")
